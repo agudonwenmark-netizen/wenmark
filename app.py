@@ -1,49 +1,29 @@
-from flask import Flask, jsonify, request
+
+from flask import Flask, jsonify, request, render_template
 
 app = Flask(__name__)
 
 
-@app.route('/')
+@app.route("/")
 def home():
-    return "hello Wen Mark Agudon!"
+    return render_template("index.html")
 
 
-@app.route('/greet')
+@app.route("/student")
 def get_student():
     return jsonify({
-        "student_id": "24-00174",
-        "name": "Wen Mark Agudon",
+        "student_id": "2024-00174",
+        "name": "wen mark agudon",
         "program": "BSIT",
         "year": 3,
-        "section": "Hamilton",
-        "email": "agudonwenmark@isufst.edu.ph",
-        "skills": [
-            "Python",
-            "Java",
-            "C++"
-        ]
+        "section": "A"
     })
 
 
-@app.route('/course')
-def get_course():
-    return jsonify({
-        "course_code": "IT3120",
-        "course_title": "System Integration",
-        "instructor": "Dr. Rene Arduo",
-        "semester": "First Semester",
-        "academic_year": "2026-2027"
-    })
-
-
-@app.route('/hello')
+@app.route("/hello")
 def say_hello():
-    name = request.args.get('name', 'Student')
+    name = request.args.get("name", "Student")
 
     return jsonify({
         "message": f"Hello, {name}!"
     })
-
-
-if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5000, debug=True)
