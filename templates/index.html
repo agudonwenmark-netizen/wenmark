@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Wen Mark Agudon - Student API</title>
+
+    <style>
+
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: #f4f6f8;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #222;
+        }
+
+        h2 {
+            color: #333;
+            margin-top: 30px;
+        }
+
+        button {
+            padding: 10px 16px;
+            margin: 5px 0;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        input {
+            padding: 10px;
+            width: 60%;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        #result,
+        #greeting,
+        #courseResult,
+        #studentList,
+        #sectionList {
+
+            margin-top: 15px;
+            padding: 15px;
+
+            border: 1px solid #cccccc;
+
+            border-radius: 6px;
+
+            background-color: #fafafa;
+        }
+
+        .student-card {
+
+            padding: 12px;
+
+            margin-bottom: 10px;
+
+            border-left: 4px solid #007bff;
+
+            background-color: white;
+
+            border-radius: 5px;
+        }
+
+        hr {
+
+            margin: 30px 0;
+
+            border: 0;
+
+            border-top: 1px solid #ddd;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+<div class="container">
+
+    <h1>Student API Interface</h1>
+
+
+    <!-- STUDENT INFORMATION -->
+
+    <h2>Student Information</h2>
+
+    <button onclick="loadStudent()">
+        Load Student Information
+    </button>
+
+    <div id="result">
+
+        Student information will appear here.
+
+    </div>
+
+
+    <hr>
+
+
+    <!-- GREETING API -->
+
+    <h2>Greeting API</h2>
+
+    <input
+        type="text"
+        id="nameInput"
+        placeholder="Enter your first name"
+    >
+
+    <button onclick="sayHello()">
+        Say Hello
+    </button>
+
+    <p id="greeting">
+
+        Greeting will appear here.
+
+    </p>
+
+
+    <hr>
+
+
+    <!-- COURSE API -->
+
+    <h2>Course Information API</h2>
+
+    <button onclick="loadCourse()">
+        Load Course Information
+    </button>
+
+    <div id="courseResult">
+
+        Course information will appear here.
+
+    </div>
+
+
+    <hr>
+
+
+    <!-- DATABASE STUDENTS -->
+
+    <h2>Students from SQLite Database</h2>
+
+    <button onclick="loadStudents()">
+        Load Students
+    </button>
+
+    <div id="studentList">
+
+        Database records will appear here.
+
+    </div>
+
+
+    <hr>
+
+
+    <!-- SECTION API -->
+
+    <h2>Students by Section</h2>
+
+    <input
+        type="text"
+        id="sectionInput"
+        placeholder="Enter section (A or B)"
+    >
+
+    <button onclick="loadSection()">
+        Load Section
+    </button>
+
+    <div id="sectionList">
+
+        Section records will appear here.
+
+    </div>
+
+
+</div>
+
+
+<script>
+
+
+// ==========================================
+// STUDENT API
+// ==========================================
+
+function loadStudent() {
+
+    fetch('/student')
+
+    .then(response => response.json())
+
+    .then(data => {
+
+        document.getElementById('result').innerHTML =
+
+            '<p><b>Student ID:</b> ' +
+            data.student_id +
+            '</p>' +
+
+            '<p><b>Name:</b> ' +
+            data.name +
+            '</p>' +
+
+            '<p><b>Program:</b> ' +
+            data.program +
+            '</p>' +
+
+            '<p><b>Year:</b> ' +
+            data.year +
+            '</p>' +
+
+            '<p><b>Section:</b> ' +
+            data.section +
+            '</p>';
+
+    })
+
+    .catch(error => {
+
+        document.getElementById('result').innerHTML =
+            '<p>Unable to retrieve data.</p>';
+
+    });
+
+}
+
+
+// ==========================================
+// GREETING API
+// ==========================================
+
+function sayHello() {
+
+    const name =
+        document.getElementById('nameInput').value;
+
+    fetch(
+        '/hello?name=' +
+        encodeURIComponent(name)
+    )
+
+    .then(response => response.json())
+
+    .then(data => {
+
+        document.getElementById('greeting')
+            .innerText = data.message;
+
+    })
+
+    .catch(error => {
+
+        document.getElementById('greeting')
+            .innerText =
+            'Unable to retrieve greeting.';
+
+    });
+
+}
+
+
+// ==========================================
+// COURSE API
+// ==========================================
+
+function loadCourse() {
+
+    fetch('/course')
+
+    .then(response => response.json())
+
+    .then(data => {
+
+        document.getElementById('courseResult').innerHTML =
+
+            '<p><b>Course:</b> ' +
+            data.course +
+            '</p>' +
+
+            '<p><b>Description:</b> ' +
+            data.description +
+            '</p>' +
+
+            '<p><b>Year Level:</b> ' +
+            data.year_level +
+            '</p>' +
+
+            '<p><b>Section:</b> ' +
+            data.section +
+            '</p>';
+
+    })
+
+    .catch(error => {
+
+        document.getElementById('courseResult').innerHTML =
+            '<p>Unable to retrieve course information.</p>';
+
+    });
+
+}
+
+
+// ==========================================
+// LOAD ALL STUDENTS FROM SQLITE
+// ==========================================
+
+function loadStudents() {
+
+    fetch('/students')
+
+    .then(response => response.json())
+
+    .then(data => {
+
+        let output = '';
+
+        data.forEach(student => {
+
+            output +=
+
+                '<div class="student-card">' +
+
+                '<b>' +
+                student.student_id +
+                '</b><br>' +
+
+                'Name: ' +
+                student.name +
+                '<br>' +
+
+                'Program: ' +
+                student.program +
+                '<br>' +
+
+                'Year: ' +
+                student.year +
+                '<br>' +
+
+                'Section: ' +
+                student.section +
+
+                '</div>';
+
+        });
+
+        document.getElementById(
+            'studentList'
+        ).innerHTML = output;
+
+    })
+
+    .catch(error => {
+
+        document.getElementById(
+            'studentList'
+        ).innerHTML =
+
+            '<p>Unable to retrieve student records.</p>';
+
+    });
+
+}
+
+
+// ==========================================
+// STUDENTS BY SECTION
+// ==========================================
+
+function loadSection() {
+
+    const section =
+        document.getElementById(
+            'sectionInput'
+        ).value.trim();
+
+    fetch(
+        '/students/section/' +
+        encodeURIComponent(section)
+    )
+
+    .then(response => response.json())
+
+    .then(data => {
+
+        let output = '';
+
+        if (data.length === 0) {
+
+            output =
+                '<p>No students found for this section.</p>';
+
+        } else {
+
+            data.forEach(student => {
+
+                output +=
+
+                    '<div class="student-card">' +
+
+                    '<b>' +
+                    student.student_id +
+                    '</b><br>' +
+
+                    'Name: ' +
+                    student.name +
+                    '<br>' +
+
+                    'Program: ' +
+                    student.program +
+                    '<br>' +
+
+                    'Year: ' +
+                    student.year +
+                    '<br>' +
+
+                    'Section: ' +
+                    student.section +
+
+                    '</div>';
+
+            });
+
+        }
+
+        document.getElementById(
+            'sectionList'
+        ).innerHTML = output;
+
+    })
+
+    .catch(error => {
+
+        document.getElementById(
+            'sectionList'
+        ).innerHTML =
+
+            '<p>Unable to retrieve section records.</p>';
+
+    });
+
+}
+
+
+</script>
+
+
+</body>
+
+</html>
