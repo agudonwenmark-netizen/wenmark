@@ -1,17 +1,25 @@
+
 import requests
+import json
 
-url = "https://wenmarkagudon.onrender.com/greet"
+API_URL = "http://127.0.0.1:5000/api/students"
 
-response = requests.get(url, params={"name": "Wen"})
 
-if response.status_code == 200:
-    data = response.json()
+def main():
+    try:
+        response = requests.get(API_URL, timeout=10)
+        response.raise_for_status()
 
-    print("Name:", data["name"])
-    print("Program:", data["program"])
-    print("Section:", data["section"])
-    print("Year:", data["year"])
-    print("Student ID:", data["student_id"])
-else:
-    print("Request failed.")
-    print("Status Code:", response.status_code)
+        students = response.json()
+
+        print("STUDENT RECORDS FROM MY API")
+        print(json.dumps(students, indent=4))
+
+    except requests.RequestException as error:
+        print("Could not connect to the API.")
+        print("Make sure app.py is running.")
+        print("Details:", error)
+
+
+if __name__ == "__main__":
+    main()
