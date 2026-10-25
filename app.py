@@ -1,122 +1,182 @@
+
+from flask import Flask, request, jsonify, render_template
 import sqlite3
-from flask import Flask, jsonify, request, render_template
+import requests
+from urllib.parse import urlparse
 
 app = Flask(__name__)
+DATABASE = "students.db"
 
 
-# Database connection
-def get_db_connection():
-    conn = sqlite3.connect('students.db')
+def get_db():
+    conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
 
 
-# Home page
-@app.route('/')
-def home():
-    return render_template('index.html')
+def student_dict(row):
+    return dict(row)
 
 
-# Student API from database
-@app.route('/student')
-def get_student():
-    conn = get_db_connection()
-
-    student = conn.execute(
-        'SELECT * FROM students WHERE student_id = ?',
-        ('24-00174',)
-    ).fetchone()
-
-    conn.close()
-
-    if student is None:
-        return jsonify({"error": "Student not found"}), 404
-
-    return jsonify({
-        "student_id": student["student_id"],
-        "name": student["name"],
-        "program": student["program"],
-        "year": student["year"],
-        "section": student["section"]
-    })
+# Web interface
+@app.route("/")
+def index():
+    return render_template("index.html")
 
 
-# Greeting API
-@app.route('/hello')
-def say_hello():
-    name = request.args.get('name', 'Student')
-
-    return jsonify({
-        "message": f"Hello, {name}!"
-    })
-
-
-# Custom course API
-@app.route('/course')
-def get_course():
-    return jsonify({
-        "course": "BSIT",
-        "description": "Bachelor of Science in Information Technology",
-        "year_level": 3,
-        "section": "A"
-    })
-
-
-# Get all students
-@app.route('/students')
+# READ all local students
+@app.route("/api/students", methods=["GET"])
 def get_students():
-    conn = get_db_connection()
-
-    students = conn.execute(
-        'SELECT * FROM students'
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM students ORDER BY student_id DESC"
     ).fetchall()
+    conn.close()
+    return jsonify([student_dict(row) for row in rows])
 
+
+# CREATE a student
+@app.route("/api/students", methods=["POST"])
+def add_student():
+    data = request.get_json(silent=True) or {}
+
+    required = ["name", "program", "year", "section"]
+    if any(not str(data.get(field, "")).strip() for field in required):
+        return jsonify({"error": "Please complete all fields."}), 400
+
+    conn = get_db()
+    cursor = conn.execute(
+        """INSERT INTO students (name, program, year, section)
+           VALUES (?, ?, ?, ?)""",
+        tuple(str(data[field]).strip() for field in required)
+    )
+    conn.commit()
+    student_id = cursor.lastrowid
     conn.close()
 
-    return jsonify([
-        dict(student) for student in students
-    ])
+    return jsonify({
+        "message": "Student added successfully.",
+        "student_id": student_id
+    }), 201
 
 
-# Get one student by ID
-@app.route('/students/<int:id>')
-def get_student_by_id(id):
-
-    conn = get_db_connection()
-
-    student = conn.execute(
-        'SELECT * FROM students WHERE id = ?',
-        (id,)
+# READ one student
+@app.route("/api/students/<int:student_id>", methods=["GET"])
+def get_student(student_id):
+    conn = get_db()
+    row = conn.execute(
+        "SELECT * FROM students WHERE student_id = ?",
+        (student_id,)
     ).fetchone()
-
     conn.close()
 
-    if student is None:
+    if row is None:
+        return jsonify({"error": "Student not found."}), 404
+
+    return jsonify(student_dict(row))
+
+
+# UPDATE a student
+@app.route("/api/students/<int:student_id>", methods=["PUT"])
+def update_student(student_id):
+    data = request.get_json(silent=True) or {}
+    required = ["name", "program", "year", "section"]
+
+    if any(not str(data.get(field, "")).strip() for field in required):
+        return jsonify({"error": "Please complete all fields."}), 400
+
+    conn = get_db()
+    cursor = conn.execute(
+        """UPDATE students
+           SET name = ?, program = ?, year = ?, section = ?
+           WHERE student_id = ?""",
+        (
+            str(data["name"]).strip(),
+            str(data["program"]).strip(),
+            str(data["year"]).strip(),
+            str(data["section"]).strip(),
+            student_id
+        )
+    )
+    conn.commit()
+    changed = cursor.rowcount
+    conn.close()
+
+    if changed == 0:
+        return jsonify({"error": "Student not found."}), 404
+
+    return jsonify({"message": "Student updated successfully."})
+
+
+# DELETE a student
+@app.route("/api/students/<int:student_id>", methods=["DELETE"])
+def delete_student(student_id):
+    conn = get_db()
+    cursor = conn.execute(
+        "DELETE FROM students WHERE student_id = ?",
+        (student_id,)
+    )
+    conn.commit()
+    changed = cursor.rowcount
+    conn.close()
+
+    if changed == 0:
+        return jsonify({"error": "Student not found."}), 404
+
+    return jsonify({"message": "Student deleted successfully."})
+
+
+# Retrieve classmate records through this Flask server.
+# The remote database is read-only from this application.
+@app.route("/api/classmate", methods=["GET"])
+def get_classmate_records():
+    url = request.args.get("url", "").strip()
+    parsed = urlparse(url)
+
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or not parsed.hostname.endswith(".onrender.com")
+        or parsed.username
+        or parsed.password
+    ):
         return jsonify({
-            "error": "Student not found"
-        }), 404
+            "error": "Enter your classmate's HTTPS Render API URL."
+        }), 400
 
-    return jsonify(dict(student))
+    if not parsed.path.rstrip("/").endswith("/api/students"):
+        return jsonify({
+            "error": "URL must end with /api/students."
+        }), 400
+
+    try:
+        response = requests.get(url, timeout=15)
+        response.raise_for_status()
+        records = response.json()
+
+        if not isinstance(records, list):
+            return jsonify({
+                "error": "The classmate API did not return a JSON list."
+            }), 502
+
+        return jsonify(records)
+
+    except (requests.RequestException, ValueError):
+        return jsonify({
+            "error": "Unable to retrieve classmate records. Check the URL and try again."
+        }), 502
 
 
-# Additional custom database endpoint
-# Display students from Section A
-@app.route('/students/section/<section>')
-def get_students_by_section(section):
+if __name__ == "__main__":
+    with get_db() as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS students (
+                student_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                program TEXT NOT NULL,
+                year TEXT NOT NULL,
+                section TEXT NOT NULL
+            )
+        """)
 
-    conn = get_db_connection()
-
-    students = conn.execute(
-        'SELECT * FROM students WHERE section = ?',
-        (section.upper(),)
-    ).fetchall()
-
-    conn.close()
-
-    return jsonify([
-        dict(student) for student in students
-    ])
-
-
-if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)
